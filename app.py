@@ -31,7 +31,7 @@ if st.button("Generate Image"):
         with st.spinner("Generating your image..."):
             # Call Replicate API
             output = replicate.run(
-                "stability-ai/stable-diffusion",
+                "stability-ai/stable-diffusion-2",
                 input={
                     "prompt": prompt,
                     "image_dimensions": f"{image_width}x{image_height}",
@@ -56,3 +56,4 @@ if st.button("Generate Image"):
             )
     else:
         st.warning("Please enter a prompt before generating.")
+
