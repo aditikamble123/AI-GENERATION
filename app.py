@@ -31,17 +31,14 @@ if st.button("Generate Image"):
         with st.spinner("Generating your image..."):
             # Call Replicate API
             output = replicate.run(
-    "stability-ai/stable-diffusion",
-    input={
-        "prompt": prompt,
-        "width": image_width,
-        "height": image_height,
-        "num_inference_steps": num_inference_steps,
-        "guidance_scale": guidance_scale
-    }
-)
-
-
+                "stability-ai/stable-diffusion",
+                input={
+                    "prompt": prompt,
+                    "image_dimensions": f"{image_width}x{image_height}",
+                    "num_inference_steps": num_inference_steps,
+                    "guidance_scale": guidance_scale
+                }
+            )
 
             # Replicate returns a list of URLs
             image_url = output[0]
@@ -59,4 +56,3 @@ if st.button("Generate Image"):
             )
     else:
         st.warning("Please enter a prompt before generating.")
-
