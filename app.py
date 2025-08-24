@@ -1,59 +1,56 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
-from io import BytesIO
+import requests
 import os
+from io import BytesIO
+from PIL import Image
 
-# Page configuration
-st.set_page_config(page_title="AI Image Generator", layout="centered")
-st.title("🎨 AI Image Generator (Stable Diffusion 3 Medium)")
+st.set_page_config(page_title="Stable Diffusion Generator", layout="centered")
+st.title("🎨 AI Image Generator (Stability API)")
 
-# Load Hugging Face token (from secrets.toml or env var)
-HF_TOKEN = st.secrets.get("HF_TOKEN", os.getenv("HF_TOKEN"))
+API_KEY = st.secrets.get("STABILITY_API_KEY", os.getenv("STABILITY_API_KEY"))
 
-if not HF_TOKEN:
-    st.error("❌ Hugging Face token not found! Add it to `.streamlit/secrets.toml` or set it as an environment variable.")
+if not API_KEY:
+    st.error("❌ API key not found! Add it in `.streamlit/secrets.toml` or environment variables.")
     st.stop()
 
-# Initialize client
-client = InferenceClient("stabilityai/stable-diffusion-3-medium", token=HF_TOKEN)
-
-# Prompt input
 prompt = st.text_area("Enter your prompt:", placeholder="A futuristic city skyline at sunset with flying cars")
 
-# Sidebar advanced options
-st.sidebar.header("Advanced Settings")
-num_inference_steps = st.sidebar.slider("Inference Steps", 10, 50, 28)
-guidance_scale = st.sidebar.slider("Guidance Scale", 1.0, 20.0, 7.5)
-image_width = st.sidebar.selectbox("Image Width", [512, 768, 1024])
-image_height = st.sidebar.selectbox("Image Height", [512, 768, 1024])
-
-# Generate button
 if st.button("Generate Image"):
     if prompt.strip():
-        with st.spinner("Generating your image..."):
-            # Call Hugging Face Inference API
-            image = client.text_to_image(
-                prompt,
-                guidance_scale=guidance_scale,
-                num_inference_steps=num_inference_steps,
-                width=image_width,
-                height=image_height
+        with st.spinner("Generating..."):
+            response = requests.post(
+                "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text_prompts": [{"text": prompt}],
+                    "cfg_scale": 7,
+                    "clip_guidance_preset": "FAST_BLUE",
+                    "height": 512,
+                    "width": 512,
+                    "samples": 1,
+                    "steps": 30,
+                },
             )
 
-            # Show image
-            st.image(image, caption="Generated Image", use_column_width=True)
+            if response.status_code == 200:
+                data = response.json()
+                image_base64 = data["artifacts"][0]["base64"]
+                image = Image.open(BytesIO(base64.b64decode(image_base64)))
 
-            # Convert image to bytes
-            buf = BytesIO()
-            image.save(buf, format="PNG")
-            byte_im = buf.getvalue()
+                st.image(image, caption="Generated Image", use_column_width=True)
 
-            # Download button
-            st.download_button(
-                label="Download Image",
-                data=byte_im,
-                file_name="generated_image.png",
-                mime="image/png"
-            )
+                buf = BytesIO()
+                image.save(buf, format="PNG")
+                st.download_button(
+                    label="Download Image",
+                    data=buf.getvalue(),
+                    file_name="generated_image.png",
+                    mime="image/png"
+                )
+            else:
+                st.error(f"Error: {response.text}")
     else:
-        st.warning("⚠️ Please enter a prompt before generating.")
+        st.warning("⚠️ Please enter a prompt first.")
